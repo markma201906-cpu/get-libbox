@@ -4,21 +4,21 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '要编译的官方版本 (填 dev-next 或 v1.8.11 等)'
+        description: '版本号 (如: v1.8.11)'
         required: true
-        default: 'dev-next'
+        default: 'v1.8.11'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. 拉取官方源码
+      - name: 1. 拉取源码
         uses: actions/checkout@v4
         with:
           repository: SagerNet/sing-box
           ref: ${{ github.event.inputs.version }}
 
-      - name: 2. 配置 Go 语言环境
+      - name: 2. 配置 Go 环境
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
@@ -29,16 +29,16 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 4. 开始编译 (连接 NDK)
+      - name: 4. 开始编译 (修复 NDK 环境)
         run: |
-          # 将 Go 工具链加入环境变量
+          # 将 Go 工具链加入系统路径
           export PATH=$PATH:$(go env GOPATH)/bin
-          # 强制指定 GitHub 服务器自带的安卓 NDK 路径
-          export ANDROID_NDK_HOME=$ANDROID_NDK_LATEST_HOME
+          
+          # 直接执行编译！(删除了之前那行错误干扰 NDK 的代码，使用系统默认的 NDK)
           make lib_install
           make lib_android
 
-      - name: 5. 提取打包好的文件
+      - name: 5. 提取产物
         uses: actions/upload-artifact@v4
         with:
           name: libbox-${{ github.event.inputs.version }}-aar
