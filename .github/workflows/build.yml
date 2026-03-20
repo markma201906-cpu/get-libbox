@@ -29,12 +29,16 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 4. 开始编译 (修复 NDK 环境)
+      - name: 4. 开始编译 (终极修复 NDK 路径)
         run: |
           # 将 Go 工具链加入系统路径
           export PATH=$PATH:$(go env GOPATH)/bin
           
-          # 直接执行编译！(删除了之前那行错误干扰 NDK 的代码，使用系统默认的 NDK)
+          # 动态寻找服务器预装的最高版本 NDK，强制赋给变量！
+          export ANDROID_NDK_HOME=$(ls -d $ANDROID_HOME/ndk/* | sort -V | tail -n 1)
+          echo "强行抓取到的 NDK 路径为: $ANDROID_NDK_HOME"
+          
+          # 执行编译
           make lib_install
           make lib_android
 
