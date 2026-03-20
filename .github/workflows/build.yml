@@ -1,64 +1,52 @@
-name: Build libbox.aar
+name: Build libbox.aar (稳定版直出)
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: '版本号 (如: v1.13.3)'
-        required: true
-        default: 'v1.13.3'
+    # 彻底移除了手动输入版本号的选项，防止出错，直接锁死稳定版
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. 拉取源码
+      - name: 1. 拉取官方极度稳定的 v1.8.11 版本
         uses: actions/checkout@v4
         with:
           repository: SagerNet/sing-box
-          ref: ${{ github.event.inputs.version }}
+          ref: v1.8.11
 
-      - name: 2. 配置 Go 环境 (黄金稳定版)
+      - name: 2. 配置对应的 Go 1.22 环境
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.22'
 
-      - name: 3. 配置 Java 环境
+      - name: 3. 配置 Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 4. 物理清理系统干扰 NDK
-        run: |
-          echo "删除系统自带高版本 NDK..."
-          sudo rm -rf $ANDROID_HOME/ndk/*
+      - name: 4. 彻底清理系统冲突 NDK
+        run: sudo rm -rf $ANDROID_HOME/ndk/*
 
-      - name: 5. 强制安装稳定版 NDK (r25c)
+      - name: 5. 强制安装稳定版 NDK r25c
         uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
           ndk-version: r25c
           local-cache: true
 
-      - name: 6. 开始编译 (精确编译纯 64 位)
+      - name: 6. 开始编译 (纯净版，绝不修改官方脚本)
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
           export ANDROID_NDK_HOME=${{ steps.setup-ndk.outputs.ndk-path }}
           export CGO_ENABLED=1
           
-          echo "修改编译目标为纯 64 位 (arm64)..."
-          sed -i 's/-target android/-target android\/arm64/g' Makefile
-          
-          # 打印修改后的 Makefile 确认一下
-          echo "当前的编译指令为："
-          grep "build_libbox" Makefile
-          
+          echo "环境配置完毕，直接执行官方标准编译..."
           make lib_install
           make lib_android
 
-      - name: 7. 提取产物 (全盘雷达搜索模式)
+      - name: 7. 提取打包好的文件
         uses: actions/upload-artifact@v4
         with:
-          name: libbox-${{ github.event.inputs.version }}-aar
-          path: '**/*.aar'
+          name: libbox-v1.8.11-aar
+          path: libbox.aar
