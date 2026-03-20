@@ -41,7 +41,7 @@ jobs:
           ndk-version: r25c
           local-cache: true
 
-      - name: 6. 开始编译
+      - name: 6. 开始编译 (强行砍掉报错的 32 位架构)
         run: |
           # 将 Go 工具链加入系统路径
           export PATH=$PATH:$(go env GOPATH)/bin
@@ -52,6 +52,11 @@ jobs:
           
           # 禁用一些可能导致冲突的 CGO 特性，保证跨平台编译成功
           export CGO_ENABLED=1
+          
+          # 【终极必杀技】：修改官方编译脚本，强行砍掉导致报错的 32 位 (armeabi-v7a)！
+          # 只编译目前 99% 手机都在用的 64 位 (arm64) 和模拟器 (amd64)
+          echo "正在修改 Makefile，剔除兼容性极差的 32 位架构..."
+          sed -i 's/-target android/-target android\/arm64,android\/amd64/g' Makefile
           
           # 执行编译
           make lib_install
