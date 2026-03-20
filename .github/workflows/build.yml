@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '版本号 (如: v1.8.11)'
+        description: '版本号 (如: v1.13.3)'
         required: true
-        default: 'v1.8.11'
+        default: 'v1.13.3'
 
 jobs:
   build:
@@ -18,10 +18,10 @@ jobs:
           repository: SagerNet/sing-box
           ref: ${{ github.event.inputs.version }}
 
-      - name: 2. 配置 Go 环境
+      - name: 2. 配置 Go 环境 (配合新版升级到 1.24)
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.24'
 
       - name: 3. 配置 Java 环境
         uses: actions/setup-java@v4
@@ -29,20 +29,27 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 4. 开始编译 (终极修复 NDK 路径)
+      - name: 4. 强制安装全新 NDK (彻底解决环境冲突)
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26d # 官方推荐的稳定版本 NDK
+          local-cache: true
+
+      - name: 5. 开始编译
         run: |
           # 将 Go 工具链加入系统路径
           export PATH=$PATH:$(go env GOPATH)/bin
           
-          # 动态寻找服务器预装的最高版本 NDK，强制赋给变量！
-          export ANDROID_NDK_HOME=$(ls -d $ANDROID_HOME/ndk/* | sort -V | tail -n 1)
-          echo "强行抓取到的 NDK 路径为: $ANDROID_NDK_HOME"
+          # 直接使用插件提供的一手 NDK 完美路径
+          export ANDROID_NDK_HOME=${{ steps.setup-ndk.outputs.ndk-path }}
+          echo "干净的 NDK 路径已设置为: $ANDROID_NDK_HOME"
           
           # 执行编译
           make lib_install
           make lib_android
 
-      - name: 5. 提取产物
+      - name: 6. 提取产物
         uses: actions/upload-artifact@v4
         with:
           name: libbox-${{ github.event.inputs.version }}-aar
