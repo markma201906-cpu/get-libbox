@@ -18,10 +18,10 @@ jobs:
           repository: SagerNet/sing-box
           ref: ${{ github.event.inputs.version }}
 
-      - name: 2. 配置 Go 环境 (退回最稳固的 1.23)
+      - name: 2. 配置 Go 环境 (恢复使用 1.24 适配新版源码)
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'
 
       - name: 3. 配置 Java 环境
         uses: actions/setup-java@v4
@@ -29,14 +29,19 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 4. 强制安装全新 NDK (换用黄金兼容版 r25c)
+      - name: 4. 物理清理系统干扰 NDK
+        run: |
+          echo "釜底抽薪：删除系统自带的高版本 NDK，防止 gomobile 偷偷抓取报错..."
+          sudo rm -rf $ANDROID_HOME/ndk/*
+
+      - name: 5. 强制安装全新稳定版 NDK
         uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
           ndk-version: r25c
           local-cache: true
 
-      - name: 5. 开始编译
+      - name: 6. 开始编译
         run: |
           # 将 Go 工具链加入系统路径
           export PATH=$PATH:$(go env GOPATH)/bin
@@ -52,7 +57,7 @@ jobs:
           make lib_install
           make lib_android
 
-      - name: 6. 提取产物
+      - name: 7. 提取产物
         uses: actions/upload-artifact@v4
         with:
           name: libbox-${{ github.event.inputs.version }}-aar
